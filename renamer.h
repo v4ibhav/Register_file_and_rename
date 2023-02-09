@@ -1,13 +1,50 @@
 #include <inttypes.h>
 #include <iostream>
+#include <vector>
 
-#define int64	uint64_t
+
+#define i64t	uint64_t
 
 class renamer{
     private:
     // all the structure inside this specifier
+    // i64t    n_log_regs
+    //         ,n_phys_regs
+    //         ,n_branches
+    //         ,n_active;
+    
+    //RMT
+    vector<i64t> RMT;
+    //AMT
+    vector<i64t> AMT;
+    //free list
+    struct FreeList{
+        vector<i64t> FL_entries;
+        i64t head;
+        i64t tail;
+        bool h_phase,t_phase;
+        i64t FL_Size;
 
+    };
+    struct ALRow{
+        i64t log_dest, phy_dest,prog_counter;
+        bool dest_flag,load_flag,store_flag,branch_flag,atomic_flag, CSR_flag;
+        bool complete_bit,exception_bit, load_viol_bit,branch_misp_bit,value_misp_bit;
+    };
 
+    //active list
+    struct ActiveList{
+        vector<ALRow> AL_entries;
+        i64t head;
+        i64t tail;
+        bool h_phase,t_phase;
+        i64t AL_size;
+        
+    };
+    //prf and prf bits
+    vector<i64t> PRF;
+    vector<bool> PRF_bits;
+    //gbm
 	uint64_t GBM;
 
 
@@ -20,7 +57,6 @@ class renamer{
 		uint64_t n_active);
 	bool stall_reg(uint64_t bundle_dst);
 	bool stall_branch(uint64_t bundle_branch);
-	uint64_t get_branch_mask();
 	uint64_t get_branch_mask();
 	uint64_t rename_rsrc(uint64_t log_reg);
 	uint64_t rename_rdst(uint64_t log_reg);
