@@ -1,6 +1,7 @@
 #include <inttypes.h>
 #include <iostream>
 #include <vector>
+#include <assert.h>
 
 
 #define i64t	uint64_t
@@ -18,38 +19,62 @@ class renamer{
     //AMT
     vector<i64t> AMT;
     //free list
-    struct FreeList{
+    typedef struct FreeList{
         vector<i64t> FL_entries;
         i64t head;
         i64t tail;
         bool h_phase,t_phase;
         i64t FL_Size;
 
-    };
-    struct ALRow{
+    }FreeList;
+
+    typedef struct ALRow{
         i64t log_dest, phy_dest,prog_counter;
         bool dest_flag,load_flag,store_flag,branch_flag,atomic_flag, CSR_flag;
         bool complete_bit,exception_bit, load_viol_bit,branch_misp_bit,value_misp_bit;
-    };
+        ALRow() :   dest_flag(0),
+                    load_flag(0),
+                    store_flag(0),
+                    branch_flag(0),
+                    atomic_flag(0),
+                    CSR_flag(0),
+                    complete_bit(0),
+                    exception_bit(0),
+                    load_viol_bit(0),
+                    branch_misp_bit(0),
+                    value_misp_bit(0),
+                    log_dest(0),
+                    phy_dest(0),
+                    prog_counter(0){};
+    }ALRow;
 
     //active list
-    struct ActiveList{
+    typedef struct ActiveList{
         vector<ALRow> AL_entries;
         i64t head;
         i64t tail;
         bool h_phase,t_phase;
         i64t AL_size;
+        ActiveList() :  head(0),
+                        tail(0),
+                        h_phase(0),
+                        t_phase(0),
+                        AL_size(0){};
         
-    };
+    }ActiveList;
     //prf and prf bits
     vector<i64t> PRF;
     vector<bool> PRF_bits;
     //gbm
 	uint64_t GBM;
 
+    FreeList FL;
+    ActiveList AL;
 
 
     public:
+
+
 
     renamer(uint64_t n_log_regs,
 		uint64_t n_phys_regs,
