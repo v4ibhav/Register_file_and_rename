@@ -9,10 +9,10 @@
 class renamer{
     private:
     // all the structure inside this specifier
-    // i64t    n_log_regs
-    //         ,n_phys_regs
-    //         ,n_branches
-    //         ,n_active;
+    i64t    number_of_branches,      
+            number_of_logical_reg,
+            number_of_physical_reg,
+            total_active_instruction;
     
     //RMT
     vector<i64t> RMT;
@@ -59,7 +59,8 @@ class renamer{
                         tail(0),
                         h_phase(0),
                         t_phase(0),
-                        AL_size(0){};
+                        AL_size(0),
+                        AL_entries(0){};
         
     }ActiveList;
     //prf and prf bits
@@ -67,9 +68,25 @@ class renamer{
     vector<bool> PRF_bits;
     //gbm
 	uint64_t GBM;
+    //checkpoint
+    typedef struct CheckPoint
+    {
+        vector<i64t>    SMT;
+        i64t            checkpoint_freelist_head;
+        bool            checkpoint_freelist_head_phase;
+        i64t            checkpoint_GBM;
+        CheckPoint() :  SMT(0),
+                        checkpoint_freelist_head(0),
+                        checkpoint_freelist_head_phase(0),
+                        checkpoint_GBM(0){};
+    }CheckPoint;
+    
 
     FreeList FL;
+    ALRow AL_entries;
     ActiveList AL;
+    vector<CheckPoint>  Branch_CheckPoint;
+
 
 
     public:
