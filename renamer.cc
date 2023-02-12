@@ -8,12 +8,7 @@ using namespace std;
 #define foru(i,n) for(uint64_t i = 0; i<n; i++)
 
 renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,uint64_t n_active)
-{
-    // this->n_log_regs    =   n_log_regs;
-    // this->n_phys_regs   =   n_phys_regs;
-    // this->n_branches    =   n_branches;
-    // this->n_active      =   n_active;
-
+{   
     assert(n_phys_regs>n_log_regs);
     assert(n_branches >= 1 && n_branches <= 64);
     assert(n_active > 0);
@@ -363,9 +358,6 @@ void renamer::set_value_misprediction(uint64_t AL_index)
     AL.AL_entries[AL_index].value_misp_bit = 1;
 }
 
-/////////////////////////////////////////////////////////////////////
-// Query the exception bit of the indicated entry in the Active List.
-/////////////////////////////////////////////////////////////////////
 bool renamer::get_exception(uint64_t AL_index)
 {
     return AL.AL_entries[AL_index].exception_bit;
