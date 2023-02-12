@@ -99,11 +99,11 @@ uint64_t renamer::rename_rdst(uint64_t log_reg)
     //goto freelist head-->get the index 
     i64t rmt_value = FL.FL_entries[FL.head];
     //pop the head and increment
-    if(FL.head == FL.FL_Size-1)
+    if(FL.head == FL.FL_Size)
     {
         FL.head = 0;
         //wrap around 
-        FL.h_phase = 1;
+        FL.h_phase = !FL.h_phase;
     }
     else
     {
@@ -146,13 +146,19 @@ uint64_t renamer::checkpoint()
 
 bool renamer::stall_dispatch(uint64_t bundle_inst)
 {
-    //AL_size will keep the number of remaining
-    //
-    if(AL.AL_size < bundle_inst)
+    // find the size of AL
+    i64t AL_free_space;
+    if(AL.h_phase != AL.t_phase)
     {
-        return true;
+        AL_free_space = AL.AL_size - (AL.AL_size-AL.head+AL.tail)%AL.AL_size;
     }
+    else
+        AL_free_space = AL.AL_size - (AL.tail - AL.head);
+
+    if(AL_free_space<bundle_inst)  return true;
     return false;
+
+    
 }
 
 
@@ -174,6 +180,12 @@ uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_r
     AL.AL_entries[AL.tail].prog_counter =   PC;
 
     AL.tail++;
+    AL.AL_size++;
+    if(AL.tail == AL.AL_size)
+    {
+        AL.tail = 0;
+        AL.t_phase = !AL.t_phase;
+    }
     return index_of_instruction;
 }
 
@@ -229,16 +241,136 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
     else
     {
         // * Restore the GBM from the branch's checkpoint.
+        Branch_CheckPoint[branch_ID].checkpoint_GBM &= ~(1<<branch_ID);
         GBM = Branch_CheckPoint[branch_ID].checkpoint_GBM;
         //assertion is needed here to make sure.
 
         //restore the rmt from branch checkpoint
         RMT.assign(Branch_CheckPoint[branch_ID].SMT.begin(),Branch_CheckPoint[branch_ID].SMT.end());
 
-        //restore the free list 
+        //restore the free list head and the phase
+        FL.head = Branch_CheckPoint[branch_ID].checkpoint_freelist_head;
+        FL.h_phase = Branch_CheckPoint[branch_ID].checkpoint_freelist_head_phase;
+        
+        //restor the active list tail and its phase bit
+        while(AL.tail != AL_index)
+        {
+            if(AL.tail == 0)    
+            {
+                AL.t_phase = AL.h_phase; //dicey
+                AL.tail = total_active_instruction-1;
+            }
+            else{AL.tail--;}  
+            AL.AL_size--;    
+        }
     }
 
 }
+
+bool renamer::precommit(bool &completed,bool &exception, bool &load_viol, bool &br_misp, bool &val_misp,bool &load, bool &store, bool &branch, bool &amo, bool &csr,uint64_t &PC)
+{
+    if(AL.head == AL.tail && AL.h_phase == AL.t_phase)
+    {
+        assert(AL.AL_size == 0);
+        return false;//al is empty
+    }
+    else
+    {
+        completed   =   AL.AL_entries[AL.head].complete_bit; 
+        exception   =   AL.AL_entries[AL.head].exception_bit; 
+        load_viol   =   AL.AL_entries[AL.head].load_viol_bit;
+        br_misp     =   AL.AL_entries[AL.head].branch_misp_bit;
+        val_misp    =   AL.AL_entries[AL.head].value_misp_bit;
+        load        =   AL.AL_entries[AL.head].load_flag;
+        store       =   AL.AL_entries[AL.head].store_flag;
+        branch      =   AL.AL_entries[AL.head].branch_flag;
+        amo         =   AL.AL_entries[AL.head].atomic_flag;
+        csr         =   AL.AL_entries[AL.head].CSR_flag;
+        PC          =   AL.AL_entries[AL.head].prog_counter;
+
+        return true;
+
+    }
+}
+
+void renamer::commit()
+{
+    assert(AL.AL_size !=0);
+    assert(AL.AL_entries[AL.head].complete_bit == true);
+    assert(AL.AL_entries[AL.head].exception_bit != true);
+    assert(AL.AL_entries[AL.head].load_viol_bit != true);
+
+    //commiting the head of the AL; ALso means freeing the register
+    //check if phy dest reg is there or 
+    if(AL.AL_entries[AL.head].dest_flag != 0)
+    {
+        //there is destination reg
+        //go to AMT and free the reg there
+        FL.FL_entries[FL.tail] = AMT[AL.AL_entries[AL.head].log_dest];
+        //increase the fl tail
+        if(FL.tail == FL.FL_Size-1) 
+        {
+            FL.tail = 0;
+            FL.t_phase = !FL.t_phase;
+        }
+        else    FL.tail++;
+
+        //now put the physical reg from AL to AMT and increase head pointer of the AL
+        AMT[AL.AL_entries[AL.head].log_dest] = AL.AL_entries[AL.head].phy_dest;
+        if(AL.head == AL.AL_size-1) 
+        {
+            AL.head = 0;
+            AL.h_phase = !AL.h_phase;
+        }
+        else    AL.head++;
+        AL.AL_size--;
+
+    }
+}
+
+void renamer::squash()
+{
+    //squashing all instruction first thing AMT will be copied to RMT
+    RMT.assign(AMT.begin(),AMT.end());
+    // Active List will be emptied and phase are matched 
+    AL.head = AL.tail;
+    AL.h_phase = AL.t_phase;
+    FL.head = FL.tail;
+    FL.h_phase = FL.t_phase;
+    foru(i, FL.FL_Size)
+    {
+        PRF_bits[FL.FL_entries[i]] = 1;
+    }
+    GBM  = 0;
+
+}
+
+void renamer::set_exception(uint64_t AL_index)
+{
+    AL.AL_entries[AL_index].exception_bit = 1;
+}
+void renamer::set_load_violation(uint64_t AL_index)
+{
+    AL.AL_entries[AL_index].load_viol_bit = 1;
+}
+void renamer::set_branch_misprediction(uint64_t AL_index)
+{
+    AL.AL_entries[AL_index].branch_misp_bit =1;
+
+}
+void renamer::set_value_misprediction(uint64_t AL_index)
+{
+    AL.AL_entries[AL_index].value_misp_bit = 1;
+}
+
+/////////////////////////////////////////////////////////////////////
+// Query the exception bit of the indicated entry in the Active List.
+/////////////////////////////////////////////////////////////////////
+bool renamer::get_exception(uint64_t AL_index)
+{
+    return AL.AL_entries[AL_index].exception_bit;
+}
+
 
 
 
