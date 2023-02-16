@@ -17,10 +17,9 @@ renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,ui
     ///////////////vector allocation/////////////////
     RMT.resize(n_log_regs);
     AMT.resize(n_log_regs);
- 
-    foru(i,n_log_regs){
-        RMT[i] = i;
-        AMT[i] = i;
+    foru(i,n_log_regs)
+    {
+        RMT[i] = AMT[i] = i;
     }
 
     ////////////////Free list allocation//////////////
@@ -30,7 +29,6 @@ renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,ui
     FL.head =   FL.tail   =   0;
     FL.h_phase  =    0;
     FL.t_phase  =    1 ;
-
     foru(j,flsize)
     {
         FL.FL_entries[j] = j+n_log_regs; 
@@ -54,8 +52,6 @@ renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,ui
     //////////////GBM set///////////////////////////////
     GBM = 0;
 
-    
-    
     ///////////////Private variables////////////////////
     number_of_branches      =   n_branches;
     number_of_logical_reg   =   n_log_regs;
@@ -69,42 +65,21 @@ renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,ui
 
 bool renamer::stall_reg(uint64_t bundle_dst)
 {
-//     static int i = 0;
-// if(i > 3)
-//     cout << "hello" << endl;
-//     i+= bundle_dst;
-//     cout << "REG ENTER BUNDLE SIZE  " << bundle_dst << " head "<<FL.head<<"  tail : "<< FL.tail<<  endl;
     i64t n_freelist_enteries = enteries_in_freelist();
-
-    if(bundle_dst>n_freelist_enteries)
-    {
-        cout<<"stall_reg is true\n";
-
-        return true;
-    }
-    cout<<"stall_reg is false\n";
-    return false;
+    return (bundle_dst>n_freelist_enteries);
 }
 
 bool renamer::stall_branch(uint64_t bundle_branch)
 {
     //check number of set bits of GBM (number of 1)
-    i64t count_set_bits    =    0;
-    i64t t_GBM = GBM;
+    i64t count_set_bits =    0;
+    i64t t_GBM =    GBM;
     foru(i,number_of_branches)
     {
         if((t_GBM & 1) == true)   count_set_bits++;
-        t_GBM  =t_GBM>>1;
+        t_GBM  >>= 1;
     }   
-   
-    if((number_of_branches-count_set_bits)<bundle_branch)    
-    {
-    cout<<"stall_branch is true\n";
-
-        return true;
-    }
-    cout<<"stall_branch is false\n";
-    return false;   
+    return((number_of_branches-count_set_bits)<bundle_branch);
 }
 
 uint64_t renamer::get_branch_mask()
@@ -120,19 +95,19 @@ uint64_t renamer::rename_rsrc(uint64_t log_reg)
 uint64_t renamer::rename_rdst(uint64_t log_reg)
 {
     //goto freelist head-->get the index 
-    cout<<"inside rename destination";
     i64t rmt_value = FL.FL_entries[FL.head];
-    cout << rmt_value << endl;
+
     //increment the head 
     FL.head++;
+    
     //wrap around
     if(FL.head == FL.FL_Size)
     {
         FL.head = 0;
         FL.h_phase = !FL.h_phase;
     }
+
     RMT[log_reg] = rmt_value;
-    cout << "return rename destination"<<"\n";
     return rmt_value;
 
 }
@@ -147,7 +122,6 @@ uint64_t renamer::checkpoint()
     {
         if((t_GBM & 1) == 0 )
         {
-            cout << "checkpoint found" << endl;
             pos = i;
             break;
         }
@@ -159,29 +133,14 @@ uint64_t renamer::checkpoint()
     Branch_CheckPoint[pos].checkpoint_freelist_head = FL.head;
     Branch_CheckPoint[pos].checkpoint_freelist_head_phase = FL.h_phase;
     Branch_CheckPoint[pos].checkpoint_GBM = GBM;
-    cout << "checkpoint " << pos << endl;
-    return  pos; //this is branch id
-    // return 0;
+
+    return  pos;
 }
 
 bool renamer::stall_dispatch(uint64_t bundle_inst)
 {
-    cout << "dispatch enter data\n";
-    // find the free space inside the al
-    
     i64t AL_free_space = space_in_activelist();
-    cout << "Dispatch BUNDLE SIZE " << bundle_inst << " head "<<AL.head<<"  tail : "<< AL.tail<<  endl;
-
-    if(AL_free_space<bundle_inst)
-    {
-        //cout<<"alfree_space"<<AL.AL_size-enteries_in_activelist()<<"\n";
-        cout<<"dispatch return true  "<<bundle_inst<<"\n";
-        return true;
-    }
-    cout<<"stall dispatch is false \n";
-    return false;
-
-    
+    return (AL_free_space<bundle_inst);  
 }
 
 
@@ -189,15 +148,14 @@ uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_r
 {
     i64t index_of_instruction = AL.tail;
     
-    //1. dest_valid if true then the instr. has a destination register.
-
+    //dest_valid if true then the instr. has a destination register.
     if(dest_valid)
     {
         AL.AL_entries[AL.tail].log_dest = log_reg;
         AL.AL_entries[AL.tail].phy_dest = phys_reg;
-
     }
 
+    //new instruction will clear all the old active list garbage values
     AL.AL_entries[AL.tail].load_flag    =   load;
     AL.AL_entries[AL.tail].store_flag   =   store;
     AL.AL_entries[AL.tail].branch_flag  =   branch;
@@ -210,19 +168,17 @@ uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_r
     AL.AL_entries[AL.tail].exception_bit = 0;
     AL.AL_entries[AL.tail].value_misp_bit = 0;
 
-
     AL.AL_entries[AL.tail].prog_counter =   PC;
 
 
     //increment the tail
     AL.tail++;
-    //check for wrap around condition.
+    //wrap around
     if(AL.tail == AL.AL_size)
     {
         AL.tail = 0;
         AL.t_phase = !AL.t_phase;
     }
-    cout<<"inside dispatch instruction "<<"\n";
 
     return index_of_instruction;
 }
@@ -230,9 +186,7 @@ uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_r
 
 bool renamer::is_ready(uint64_t phys_reg)
 {
-    bool checker;
-    checker = PRF_bits[phys_reg];
-    return(checker == 1);
+    return(PRF_bits[phys_reg]);
 }
 
 
@@ -263,13 +217,11 @@ void renamer::set_complete(uint64_t AL_index)
 
 void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
 {
-    //resolving branch here.
-    //branch is correctly predicted
-
     if(correct)
     {
         // clear the branch bit in the gbm
         GBM &= (~(1<<branch_ID));
+
         //clear the branch bit in all the branch checkpoints
         foru(i, number_of_branches)
         {
@@ -282,7 +234,6 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
         // * Restore the GBM from the branch's checkpoint.
         Branch_CheckPoint[branch_ID].checkpoint_GBM &= (~(1<<branch_ID));
         GBM = Branch_CheckPoint[branch_ID].checkpoint_GBM;
-        //assertion is needed here to make sure.
 
         //restore the rmt from branch checkpoint
         RMT = Branch_CheckPoint[branch_ID].SMT;
@@ -297,6 +248,7 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
         {
             AL.tail = 0;
         }
+
         //restore phase
         AL.t_phase  =   !AL.h_phase;
         if(AL.tail>AL.head)
@@ -312,10 +264,6 @@ bool renamer::precommit(bool &completed,bool &exception, bool &load_viol, bool &
 {
     if((AL.head == AL.tail) && (AL.h_phase == AL.t_phase))
     {
-        //active list is empty
-         cout<<"active list is empty"<<AL.AL_size<<"\n";
-        // cout<<AL.AL_size<<"\t"<<enteries_in_activelist()<<"\n";
-        
         return false;
     }
     else
@@ -331,9 +279,6 @@ bool renamer::precommit(bool &completed,bool &exception, bool &load_viol, bool &
         amo         =   AL.AL_entries[AL.head].atomic_flag;
         csr         =   AL.AL_entries[AL.head].CSR_flag;
         PC          =   AL.AL_entries[AL.head].prog_counter;
-        // cout<<"precommint is true\n";
-        //  cout<<"AL return true " << AL.AL_size<<"\t"<<enteries_in_activelist()<<"\n";
-
         return true;
 
     }
@@ -345,18 +290,11 @@ void renamer::commit()
     assert(AL.AL_entries[AL.head].complete_bit == true);
     assert(AL.AL_entries[AL.head].exception_bit != true);
     assert(AL.AL_entries[AL.head].load_viol_bit != true);
-    /*if(AL.AL_entries[AL.head].branch_flag)
-    {
-        cout<<"it is a branch\n";
-    }*/
-    //commiting the head of the AL; ALso means freeing the register
-    //check if phy dest reg is there or not
+
     if(AL.AL_entries[AL.head].dest_flag)
     {
-        //there is destination reg
-        //go to AMT and free the reg there
-        cout<<"Destination flag is true: tail increment"<<endl;
         FL.FL_entries[FL.tail] = AMT[AL.AL_entries[AL.head].log_dest];
+
         //increase the fl tail
         FL.tail++;
         if(FL.tail == FL.FL_Size) 
@@ -368,14 +306,15 @@ void renamer::commit()
         //now put the physical reg from AL to AMT and increase head pointer of the AL
         AMT[AL.AL_entries[AL.head].log_dest] = AL.AL_entries[AL.head].phy_dest;
     }
-        AL.head++;
-        if(AL.head == AL.AL_size) 
-        {
-            //wrap up
-            AL.head = 0;
-            AL.h_phase = !AL.h_phase;
-        }
-        cout<<"Data got committed"<<endl;
+
+    // increment head
+    AL.head++;
+    if(AL.head == AL.AL_size) 
+    {
+        //wrap up
+        AL.head = 0;
+        AL.h_phase = !AL.h_phase;
+    }
 }
 
 void renamer::squash()
@@ -386,14 +325,15 @@ void renamer::squash()
     {
         PRF_bits[i] = 1;
     }
+    
     // Active List will be emptied and phase are matched 
     AL.tail = AL.head ;
     AL.t_phase = AL.h_phase;
+    
     //freelist is filled and phase are mismatched
     FL.head = FL.tail;
     FL.h_phase = !FL.t_phase;
-    
-    cout<<"SQUASH is working";
+
     GBM  = 0;
     foru(i,number_of_branches)
     {
@@ -431,7 +371,8 @@ uint64_t renamer::space_in_activelist()
     {
         return AL.AL_size - AL.tail + AL.head;   
     }
-else{
+    else
+    {
         return AL.head - AL.tail;
     }
 }
@@ -442,7 +383,8 @@ uint64_t renamer::enteries_in_freelist()
     {
         return FL.tail-FL.head;
     }
-    else{
+    else
+    {
         return FL.FL_Size-FL.head+FL.tail;
     }
 }
