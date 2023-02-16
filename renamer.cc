@@ -220,15 +220,13 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
     if(correct)
     {
         // clear the branch bit in the gbm
+        // and clear the branch bit in all the branch checkpoints
         GBM &= (~(1<<branch_ID));
-
-        //clear the branch bit in all the branch checkpoints
         foru(i, number_of_branches)
         {
             Branch_CheckPoint[i].checkpoint_GBM &= (~(1<<branch_ID));
         }
     }
-    // check it later
     else
     {
         // * Restore the GBM from the branch's checkpoint.
@@ -256,7 +254,6 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
             AL.t_phase = AL.h_phase;
         }
     }
-
 }
  
 
