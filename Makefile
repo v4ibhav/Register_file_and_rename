@@ -5,7 +5,7 @@ OPT = -O3
 INC = -I.
 LIB = -L.
 
-CFLAGS = $(OPT) $(INC) $(LIB)
+CFLAGS = $(OPT) $(INC) $(LIB) -Wall
 
 LIBS = -l721sim -lpthread -lz -ldl 
 

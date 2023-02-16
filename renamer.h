@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <assert.h>
-
+using namespace std;
 
 #define i64t	uint64_t
 
@@ -25,6 +25,11 @@ class renamer{
         i64t tail;
         bool h_phase,t_phase;
         i64t FL_Size;
+        FreeList()  :   head(0),
+                        tail(0),
+                        h_phase(0),
+                        t_phase(1),
+                        FL_Size(0){};
 
     }FreeList;
 
@@ -32,7 +37,10 @@ class renamer{
         i64t log_dest, phy_dest,prog_counter;
         bool dest_flag,load_flag,store_flag,branch_flag,atomic_flag, CSR_flag;
         bool complete_bit,exception_bit, load_viol_bit,branch_misp_bit,value_misp_bit;
-        ALRow() :   dest_flag(0),
+        ALRow():    log_dest(0),
+                    phy_dest(0),
+                    prog_counter(0),
+                    dest_flag(0),
                     load_flag(0),
                     store_flag(0),
                     branch_flag(0),
@@ -42,10 +50,7 @@ class renamer{
                     exception_bit(0),
                     load_viol_bit(0),
                     branch_misp_bit(0),
-                    value_misp_bit(0),
-                    log_dest(0),
-                    phy_dest(0),
-                    prog_counter(0){};
+                    value_misp_bit(0){};
     }ALRow;
 
     //active list
@@ -59,8 +64,7 @@ class renamer{
                         tail(0),
                         h_phase(0),
                         t_phase(0),
-                        AL_size(0),
-                        AL_entries(0){};
+                        AL_size(0) {};
         
     }ActiveList;
     //prf and prf bits
@@ -83,16 +87,13 @@ class renamer{
     
 
     FreeList FL;
-    ALRow AL_entries;
+    // ALRow AL_entries;
     ActiveList AL;
     vector<CheckPoint>  Branch_CheckPoint;
 
 
 
     public:
-
-
-
     renamer(uint64_t n_log_regs,
 		uint64_t n_phys_regs,
 		uint64_t n_branches,
@@ -133,6 +134,9 @@ class renamer{
 	void set_branch_misprediction(uint64_t AL_index);
 	void set_value_misprediction(uint64_t AL_index);
 	bool get_exception(uint64_t AL_index);
+    uint64_t enteries_in_freelist();
+    uint64_t space_in_activelist();
+
 
 
 
