@@ -1,7 +1,5 @@
 #include "renamer.h"
 
-#define foru(i,n) for(uint64_t i = 0; i<n; i++)
-
 renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,uint64_t n_active)
 {   
     ///////////////assertion///////////////////////
