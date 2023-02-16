@@ -1,9 +1,10 @@
 #include <inttypes.h>
 #include <iostream>
-#include <vector>
 #include <assert.h>
-using namespace std;
+#include <vector>
+#include <bits/stdc++.h>
 
+using namespace std;
 #define i64t	uint64_t
 
 class renamer{

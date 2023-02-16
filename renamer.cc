@@ -1,7 +1,4 @@
 #include "renamer.h"
-#include <vector>
-#include <iostream>
-#include <bits/stdc++.h>
 
 #define foru(i,n) for(uint64_t i = 0; i<n; i++)
 
@@ -60,11 +57,13 @@ renamer::renamer(uint64_t n_log_regs,uint64_t n_phys_regs,uint64_t n_branches,ui
     Branch_CheckPoint.resize(number_of_branches);
     
 }
+
 bool renamer::stall_reg(uint64_t bundle_dst)
 {
     i64t n_freelist_enteries = enteries_in_freelist();
     return (bundle_dst>n_freelist_enteries);
 }
+
 bool renamer::stall_branch(uint64_t bundle_branch)
 {
     //check number of set bits of GBM (number of 1)
@@ -77,14 +76,17 @@ bool renamer::stall_branch(uint64_t bundle_branch)
     }   
     return((number_of_branches-count_set_bits)<bundle_branch);
 }
+
 uint64_t renamer::get_branch_mask()
 {
     return GBM;
 }
+
 uint64_t renamer::rename_rsrc(uint64_t log_reg)
 {
     return RMT[log_reg];
 }
+
 uint64_t renamer::rename_rdst(uint64_t log_reg)
 {
     //goto freelist head-->get the index 
@@ -104,6 +106,7 @@ uint64_t renamer::rename_rdst(uint64_t log_reg)
     return rmt_value;
 
 }
+
 uint64_t renamer::checkpoint()
 {
     //find the branch id position inside gbm if there is one
@@ -128,11 +131,13 @@ uint64_t renamer::checkpoint()
 
     return  pos;
 }
+
 bool renamer::stall_dispatch(uint64_t bundle_inst)
 {
     i64t AL_free_space = space_in_activelist();
     return (AL_free_space<bundle_inst);  
 }
+
 uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_reg,bool load,bool store,bool branch,bool amo,bool csr,uint64_t PC)
 {
     i64t index_of_instruction = AL.tail;
@@ -171,30 +176,37 @@ uint64_t renamer::dispatch_inst(bool dest_valid,uint64_t log_reg,uint64_t phys_r
 
     return index_of_instruction;
 }
+
 bool renamer::is_ready(uint64_t phys_reg)
 {
     return(PRF_bits[phys_reg]);
 }
+
 void renamer::clear_ready(uint64_t phys_reg)
 {
     PRF_bits[phys_reg] = false;
 }
+
 uint64_t renamer::read(uint64_t phys_reg)
 {
     return PRF[phys_reg];
 }
+
 void renamer::set_ready(uint64_t phys_reg)
 {
     PRF_bits[phys_reg]   =   true;
 }
+
 void renamer::write(uint64_t phys_reg, uint64_t value)
 {
     PRF[phys_reg] = value;
 }
+
 void renamer::set_complete(uint64_t AL_index)
 {
     AL.AL_entries[AL_index].complete_bit = true;
 }
+
 void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
 {
     if(correct)
@@ -235,6 +247,7 @@ void renamer::resolve(uint64_t AL_index,uint64_t branch_ID,bool correct)
         }
     }
 }
+
 bool renamer::precommit(bool &completed,bool &exception, bool &load_viol, bool &br_misp, bool &val_misp,bool &load, bool &store, bool &branch, bool &amo, bool &csr,uint64_t &PC)
 {
     if((AL.head == AL.tail) && (AL.h_phase == AL.t_phase))
@@ -258,6 +271,7 @@ bool renamer::precommit(bool &completed,bool &exception, bool &load_viol, bool &
 
     }
 }
+
 void renamer::commit()
 {
     // assert(AL.AL_size !=0);
@@ -290,6 +304,7 @@ void renamer::commit()
         AL.h_phase = !AL.h_phase;
     }
 }
+
 void renamer::squash()
 {
     //squashing all instruction first thing AMT will be copied to RMT
@@ -314,10 +329,12 @@ void renamer::squash()
     }
 
 }
+
 void renamer::set_exception(uint64_t AL_index)
 {
     AL.AL_entries[AL_index].exception_bit = 1;
 }
+
 void renamer::set_load_violation(uint64_t AL_index)
 {
     AL.AL_entries[AL_index].load_viol_bit = 1;
@@ -326,14 +343,17 @@ void renamer::set_branch_misprediction(uint64_t AL_index)
 {
     AL.AL_entries[AL_index].branch_misp_bit =1;
 }
+
 void renamer::set_value_misprediction(uint64_t AL_index)
 {
     AL.AL_entries[AL_index].value_misp_bit = 1;
 }
+
 bool renamer::get_exception(uint64_t AL_index)
 {
     return AL.AL_entries[AL_index].exception_bit;
 }
+
 uint64_t renamer::space_in_activelist()
 {
     if(AL.h_phase == AL.t_phase)
@@ -345,6 +365,7 @@ uint64_t renamer::space_in_activelist()
         return AL.head - AL.tail;
     }
 }
+
 uint64_t renamer::enteries_in_freelist()
 {
     if(FL.h_phase == FL.t_phase)
